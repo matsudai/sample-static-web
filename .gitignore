@@ -1,0 +1,4 @@
+/go/
+/secret/*
+!/secret/.keep
+/*.exe

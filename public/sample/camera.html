@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Top page | Example</title>
+  </head>
+
+  <body>
+    <button id="scan-camera">Scan Camera</button>
+    <button id="stop-camera">Stop Camera</button>
+
+    <ul id="messages"></ul>
+
+    <video id="camera" width="640" height="480"></video>
+
+    <script>
+      /**
+       * Clear messages area.
+       */
+      const clearMessages = () => {
+        document.getElementById("messages").innerHTML = "";
+      };
+
+      /**
+       * Append info into messages area.
+       *
+       * Each param is wrapped <li /> in this function.
+       *
+       * @param {HTMLElement[]} messageContents
+       */
+      const appendMessages = (messageContents) => {
+        const container = document.getElementById("messages");
+        messageContents.forEach(messageContent => {
+          const li = document.createElement("li");
+          if (Array.isArray(messageContent)) {
+            messageContent.forEach(m => li.appendChild(m));
+          } else {
+            li.appendChild(messageContent);
+          }
+          container.appendChild(li);
+        });
+      };
+
+      /**
+       * Append error into messages area.
+       *
+       * The param is wrapped <li /> in this function and the text color is red.
+       *
+       * @param {any} err is basically Error object.
+       */
+      const appendErrorMessage = (err) => {
+        const container = document.getElementById("messages");
+        const li = document.createElement("li");
+        li.style.color = "red";
+        li.textContent = err.toString();
+        container.appendChild(li);
+      };
+
+      /**
+       * Reset camera streaming.
+       */
+      const clearCamera = () => {
+        const video = document.getElementById("camera");
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach(track => track.stop());
+          video.srcObject = null;
+        }
+      };
+
+      window.addEventListener("DOMContentLoaded", () => {
+        /*
+        * Define stop-camera button.
+        *
+        * - When clicked, the camera streaming is reset.
+        */
+        document.getElementById("stop-camera").addEventListener("click", clearCamera);
+
+        /*
+        * Define scan-camera button.
+        *
+        * - When clicked
+        *     - Clear messages and video areas.
+        *     - Videoinput devices are scanned and listed.
+        */
+        const scanner = document.getElementById("scan-camera");
+        scanner.addEventListener("click", () => {
+          navigator.mediaDevices.enumerateDevices().then(devices => {
+            clearMessages();
+            clearCamera();
+            const videoDevices = devices;
+            /*
+            * Listed videoinput devices.
+            *
+            * - When a device is clicked, the camera streaming is started.
+            */
+            const videoDeviceElements = devices.filter(device => {
+              return device.kind === "videoinput";
+            }).map(device => {
+              const button = document.createElement("button");
+              // Dummy label is used when deviceId cannot be got (for phone users).
+              button.dataset.deviceId = device.deviceId;
+              button.innerText = device.label || "[No name]";
+              button.addEventListener("click", (event) => {
+                const element = event.currentTarget;
+                const video = document.getElementById("camera");
+                // both cases of with/without deviceId when it cannot be got (for phone users).
+                const constraints = element.dataset.deviceId ? {
+                  video: {
+                    deviceId: {
+                      exact: element.dataset.deviceId
+                    },
+                    // "environment" uses back camera <> "user" uses the front camera (for phone users).
+                    facingMode: "environment"
+                  },
+                } : {
+                  video: {
+                    // "environment" uses back camera <> "user" uses the front camera (for phone users).
+                    facingMode: "environment"
+                  },
+                };
+                navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+                  video.srcObject = stream;
+                  video.play();
+                }).catch(err => {
+                  console.error(err);
+                  clearMessages();
+                  appendErrorMessage(err);
+                });
+              });
+              return button;
+            });
+            appendMessages(videoDeviceElements);
+          }).catch(err => {
+            console.error(err);
+            appendErrorMessage(err);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
